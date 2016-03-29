@@ -16,17 +16,17 @@ func cmdList(stdout io.Writer, stderr io.Writer, s *state) int {
 				groups[grp] = []string{}
 			}
 
-			groups[grp] = append(groups[grp], res.Address())
+			groups[grp] = append(groups[grp], res.Host())
 		}
 	}
 
 	return output(stdout, stderr, groups)
 }
 
-func cmdHost(stdout io.Writer, stderr io.Writer, s *state, hostname string) int {
+func cmdHost(stdout io.Writer, stderr io.Writer, s *state, hostname string, remap map[string]string) int {
 	for _, res := range s.resources() {
-		if hostname == res.Address() {
-			return output(stdout, stderr, res.Attributes())
+		if hostname == res.Host() {
+			return output(stdout, stderr, res.Attributes(remap))
 		}
 	}
 

@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"os"
+	// "os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -80,7 +80,7 @@ func NewResource(keyName string, state resourceState) (*Resource, error) {
 }
 
 func (r Resource) IsSupported() bool {
-	return r.Address() != ""
+	return r.Host() != ""
 }
 
 // Groups returns the list of Ansible groups which this resource should be
@@ -108,7 +108,7 @@ func (r Resource) Tags() map[string]string {
 
 	switch r.resourceType {
 	case "aws_instance":
-		for k, v := range r.Attributes() {
+		for k, v := range r.Attributes(nil) {
 			parts := strings.SplitN(k, ".", 2)
 			if len(parts) == 2 && parts[0] == "tags" && parts[1] != "#" {
 				kk := strings.ToLower(parts[1])
@@ -122,8 +122,31 @@ func (r Resource) Tags() map[string]string {
 }
 
 // Attributes returns a map containing everything we know about this resource.
-func (r Resource) Attributes() map[string]string {
-	return r.State.Primary.Attributes
+// Optionally: a key/value remapping is performed based on provided argument
+func (r Resource) Attributes(remap map[string]string) map[string]string {
+	// fast-path for when there's no remap given
+	if remap == nil {
+		return r.State.Primary.Attributes
+	}
+
+	// copy attributes map
+	var attrs = make(map[string]string)
+	for k, v := range r.State.Primary.Attributes {
+		attrs[k] = v
+	}
+
+	// create remapped values
+	var mapped = make(map[string]string)
+	for from, to := range remap {
+		mapped[to] = attrs[from]
+	}
+
+	// add/overwrite remapped values to normal attributes
+	for k, v := range mapped {
+		attrs[k] = v
+	}
+
+	return attrs
 }
 
 // NameWithCounter returns the resource name with its counter. For resources
@@ -132,10 +155,10 @@ func (r Resource) NameWithCounter() string {
 	return fmt.Sprintf("%s.%d", r.baseName, r.counter)
 }
 
-// Address returns the IP address of this resource.
-func (r Resource) Address() string {
-	if keyName := os.Getenv("TF_KEY_NAME"); keyName != "" {
-		if ip := r.State.Primary.Attributes[keyName]; ip != "" {
+// Host returns the host identifier of this resource.
+func (r Resource) Host() string {
+	if *hostIdentifier != "" {
+		if ip := r.State.Primary.Attributes[*hostIdentifier]; ip != "" {
 			return ip
 		}
 	} else {

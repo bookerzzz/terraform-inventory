@@ -5,11 +5,14 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 var version = flag.Bool("version", false, "print version information and exit")
 var list = flag.Bool("list", false, "list mode")
 var host = flag.String("host", "", "host mode")
+var hostIdentifier = flag.String("host-identifier", "", "host identifier field")
+var remaps = flag.String("remap", "", `remap variables, usage: --remap="from:to,from:to"`)
 
 func main() {
 	flag.Parse()
@@ -45,7 +48,11 @@ func main() {
 	}
 
 	if !*list && *host == "" {
-		fmt.Fprint(os.Stderr, "Either --host or --list must be specified")
+		fmt.Fprintln(os.Stderr, "Either --host or --list must be specified")
+		os.Exit(1)
+	}
+	if *remaps != "" && *host == "" {
+		fmt.Fprintln(os.Stderr, "Cannot specify --remap without --host")
 		os.Exit(1)
 	}
 
@@ -71,9 +78,16 @@ func main() {
 
 	if *list {
 		os.Exit(cmdList(os.Stdout, os.Stderr, &s))
-
 	} else if *host != "" {
-		os.Exit(cmdHost(os.Stdout, os.Stderr, &s, *host))
-
+		optionmap := make(map[string]string)
+		for i, remap := range strings.Split(*remaps, `,`) {
+			kv := strings.Split(remap, `:`)
+			if len(kv) != 2 {
+				fmt.Fprintf(os.Stderr, `"Invalid remap at position %d, use "from:to"\n`, i)
+				os.Exit(1)
+			}
+			optionmap[kv[1]] = kv[0]
+		}
+		os.Exit(cmdHost(os.Stdout, os.Stderr, &s, *host, optionmap))
 	}
 }

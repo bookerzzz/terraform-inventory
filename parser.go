@@ -2,8 +2,10 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
+	"os"
 	"sort"
 )
 
@@ -48,6 +50,15 @@ func (s *state) resources() []*Resource {
 				inst = append(inst, r)
 			}
 		}
+	}
+
+	var hostIdentifiers = make(map[string]bool)
+	for _, r := range inst {
+		if hostIdentifiers[r.Host()] {
+			fmt.Fprintf(os.Stderr, "Error: duplicate host \"%s\"\n", r.Host())
+			os.Exit(1)
+		}
+		hostIdentifiers[r.Host()] = true
 	}
 
 	return inst
